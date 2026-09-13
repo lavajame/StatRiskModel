@@ -1,10 +1,9 @@
 # Recreating the Research Viewer & Factor Explorer (offline)
 
 Both interactive HTML reports are **self-contained** — all CSS/JS is inlined and no
-network calls happen when the page is opened. Everything they render is derived
-from a set of CSV/JSON inputs in `reports/` and, ultimately, raw market data in
-`data/raw/`. This guide lists exactly what you need to reproduce them in a private
-GitHub repo, and how to pull the live data into offline CSVs first.
+network calls happen when the page is opened. The repository keeps raw input data,
+source scripts, and two example HTML outputs. Intermediate CSVs, figures,
+experiments, and PDFs are generated locally and ignored by git.
 
 ---
 
@@ -12,12 +11,11 @@ GitHub repo, and how to pull the live data into offline CSVs first.
 
 | Report | HTML file | Build script | Reads these CSVs |
 |---|---|---|---|
-| **Research Viewer** (guided audit: universe → frozen factors → funds → strategies) | `reports/research_viewer.html` | `scripts/build_research_viewer_polished.py` | `backtest_stats.csv`, `alpha_backtest_stats.csv`, `alpha_backtest_equity.csv`, `oos_latent_factor_moves.csv`, `strategy_oos_fitted.csv`, `strategy_oos_residuals.csv`, `frozen_factor_loadings.csv`, `strategy_train_exposures.csv`, `benchmark_cluster_order.csv`, `equal_weight_raw_fund_weights.csv`, `trend_raw_fund_weights.csv`, `trend_residual_fund_weights.csv`, `trend_residual_benchmark_hedge_exposures.csv`, + raw returns |
+| **Research Viewer** (guided audit: universe → frozen factors → funds → strategies) | `reports/research_viewer.html` | `scripts/build_research_viewer_polished.py` | Generated `reports/*.csv` files plus raw returns |
 | **Factor Model Explorer** (3-D turntable: exposure cloud + residual MDS scatter) | `reports/factor_model_explorer.html` | `scripts/build_explorer.py` | `benchmark_train_exposures.csv`, `strategy_train_exposures.csv`, `benchmark_oos_diagnostics.csv`, `strategy_oos_diagnostics.csv`, `benchmark_factor_variance_decomposition.csv`, `strategy_factor_variance_decomposition.csv` |
 
 The `research_viewer.py`, `build_research_viewer_v2.py`, and `build_research_viewer_v3.py`
-scripts are older drafts — **use the polished version** (`build_research_viewer_polished.py`)
-as the canonical builder.
+scripts are older drafts. Use `build_research_viewer_polished.py` as the canonical builder.
 
 ---
 
@@ -45,12 +43,13 @@ index-labelled rows, missing cells left blank.
 for the two HTML reports, but useful for downloading the right tickers and for labels.
 It lists `downloaded_tickers` and a `model_universe` description map.
 
-### Layer B — Model reports (intermediate CSVs)
+### Layer B — Model reports (generated locally, not committed)
 
-These are produced by the analysis pipeline (`scripts/run_experiments.py`,
-`scripts/build_correlation_report.py`, `scripts/backtest.py`, and
-`src/riskmodel/**`) — **not** downloaded from anywhere. They are the direct inputs
-to the HTML builders. Key ones:
+These are produced by `scripts/build_visuals.py`, `scripts/backtest.py`, and
+`src/riskmodel/**` — **not** downloaded from anywhere. They are the direct inputs
+to the HTML builders, but are intentionally not committed. The generated set
+includes factor loadings, OOS diagnostics, fitted/residual returns, factor moves,
+portfolio weights, and backtest statistics.
 
 | CSV | Contents used by the viewer/explorer |
 |---|---|
@@ -81,7 +80,7 @@ to the HTML builders. Key ones:
 
 | Tool | Purpose | How it's used |
 |---|---|---|
-| **Python 3.9+** | Runs the build scripts | `pandas`, `numpy` (stdlib math otherwise) |
+| **Python 3.10+** | Runs the build scripts | `pandas`, `numpy`, and `scipy` |
 | **yfinance ≥ 0.2** *(optional, only for live download)* | Fetch raw prices | `riskmodel.data_loader.fetch_asset_data()` |
 | **scipy / sklearn** | Factor PCA + clustering (pipeline only) | `build_correlation_report.py`, `run_experiments.py` |
 | **pandas** | All CSV reading/writing | every build script |
@@ -110,13 +109,15 @@ python scripts/download_put_spx_comparison.py --start 1996-01-01 --end 2026-09-0
 > The ETF tickers and `^PUT`/`^SPX` match the symbols in `data/raw/universe.json`.
 > Run this **once**; commit the resulting CSVs so the repo is fully offline.
 
-### Step 2 — Run the analysis pipeline → `reports/*.csv`
+### Step 2 — Run the analysis pipeline → local `reports/*.csv`
 
 ```bash
-python scripts/run_experiments.py        # factor model, OOS scoring, betas, diagnostics
-python scripts/build_correlation_report.py
-python scripts/backtest.py               # strategy + alpha backtests, weights
+python scripts/regenerate_reports.py
 ```
+
+This reads the committed offline CSV, writes intermediate model outputs locally,
+and rebuilds both HTML reports. It does not contact yfinance. To intentionally
+refresh the raw data instead, use `python scripts/regenerate_reports.py --download`.
 
 ### Step 3 — Build the two HTML reports (fully offline)
 
@@ -141,13 +142,13 @@ data/raw/
 scripts/
   data_loader.py                    # yfinance adapter + EWMA standardization
   download_put_spx_comparison.py    # ^PUT/^SPX downloader
-  run_experiments.py                # factor model + OOS scoring
-  build_correlation_report.py       # loadings, diagnostics, variance decomposition
   backtest.py                       # strategy + alpha backtests
+  build_visuals.py                  # model outputs and visualizations
+  regenerate_reports.py            # one-command offline report rebuild
   build_research_viewer_polished.py # -> research_viewer.html
   build_explorer.py                 # -> factor_model_explorer.html
 src/riskmodel/                      # pipeline package (universes, data_loader, ...)
-reports/                            # intermediate CSVs + final HTML
+reports/                            # two example HTML reports; generated outputs stay local
 tests/
 ```
 

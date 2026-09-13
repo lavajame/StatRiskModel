@@ -29,16 +29,28 @@ def parse_array(value: str) -> list[float]:
 
 def read_exposures(path: Path, group: str) -> list[dict[str, object]]:
     frame = pd.read_csv(path, index_col=0)
+    factor_columns = sorted(
+        (column for column in frame.columns if column.startswith("beta_Factor_")),
+        key=lambda column: int(column.rsplit("_", 1)[1]),
+    )
     records = []
     for ticker, row in frame.iterrows():
+        if factor_columns:
+            delta = [float(row[column]) for column in factor_columns]
+            gamma = [0.0] * len(delta)
+            downside = [0.0] * len(delta)
+        else:
+            delta = parse_array(row["beta_delta"])
+            gamma = parse_array(row["beta_gamma"])
+            downside = parse_array(row["beta_downside"])
         records.append({
             "ticker": ticker,
             "label": f"{ticker} - {ALL_UNIVERSES.get(ticker, ticker)}",
             "group": group,
-            "delta": parse_array(row["beta_delta"]),
-            "gamma": parse_array(row["beta_gamma"]),
-            "downside": parse_array(row["beta_downside"]),
-            "r2_train": float(row["r_squared"]),
+            "delta": delta,
+            "gamma": gamma,
+            "downside": downside,
+            "r2_train": float(row.get("r_squared", 0.0)),
         })
     return records
 

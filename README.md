@@ -15,7 +15,7 @@ This project implements the first executable slice of the specification in `stat
 python -m pip install -e ".[test]"
 ```
 
-Install data retrieval and visualization dependencies only when needed:
+Install data retrieval and visualization dependencies only when downloading fresh data or building figures:
 
 ```powershell
 python -m pip install -e ".[data,visualization]"
@@ -30,7 +30,7 @@ result = run_factor_pipeline(asset_returns, benchmark_ewma_volatility, n_factors
 factor_returns = result.factor_returns
 ```
 
-The pipeline currently accepts prepared return data so it can be tested without network access. `riskmodel.data_loader.fetch_asset_data` provides the optional `yfinance` adapter.
+The pipeline accepts prepared return data so it can be tested and rebuilt without network access. `riskmodel.data_loader.fetch_asset_data` provides the optional `yfinance` adapter for refreshing the committed CSV.
 
 ## PUT versus S&P 500 comparison
 
@@ -67,12 +67,14 @@ The target universe also includes US style sleeves (`MTUM`, `QUAL`, `USMV`, `VLU
 The benchmark panel should be downloaded with a long common history before reports are regenerated. The current target history is shorter for several newer products; keeping those assets out of factor construction prevents them from truncating the benchmark training sample.
 
 ```powershell
-python scripts/build_visuals.py
-python scripts/build_research_viewer_v3.py
-python scripts/run_experiments.py
-python scripts/build_explorer.py
-python scripts/build_correlation_report.py
+python scripts/regenerate_reports.py
 ```
+
+This reads the committed offline CSV, writes intermediate model CSVs under
+`reports/`, and regenerates both HTML reports. Use
+`python scripts/regenerate_reports.py --download` only when you intentionally want
+to refresh the raw market data through yfinance. Generated CSVs, diagnostic
+figures, and the PDF correlation report are ignored by git.
 
 Experiment outputs are written to `reports/experiments/`, including `residual_pca_experiment.csv` for reproducibility.
 

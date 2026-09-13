@@ -44,6 +44,17 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start", default="2012-01-01")
     parser.add_argument("--end", default="2026-08-15")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("data/raw/daily_returns.csv"),
+        help="Offline daily-returns CSV; download from yfinance only when absent",
+    )
+    parser.add_argument(
+        "--download",
+        action="store_true",
+        help="Ignore --input and download fresh market data with yfinance",
+    )
     parser.add_argument("--output", type=Path, default=Path("reports"))
     return parser.parse_args()
 
@@ -260,8 +271,14 @@ def main() -> None:
     model_tickers = list(BENCHMARK_UNIVERSE)
     strategy_tickers = list(EXPLANATORY_UNIVERSE)
     all_tickers = model_tickers + strategy_tickers
-    returns = fetch_asset_data(all_tickers, args.start, args.end)
-    returns.to_csv(data_dir / "daily_returns.csv")
+    if not args.download and args.input.exists():
+        returns = pd.read_csv(args.input, index_col=0, parse_dates=True)
+        returns = returns.loc[args.start:args.end]
+    else:
+        returns = fetch_asset_data(all_tickers, args.start, args.end)
+    output_data = (data_dir / "daily_returns.csv").resolve()
+    if args.input.resolve() != output_data:
+        returns.to_csv(output_data)
 
     metadata = {
         "start": args.start,
@@ -549,7 +566,8 @@ def main() -> None:
     benchmark_hedges.to_csv(args.output / "trend_residual_benchmark_hedge_exposures.csv")
     plot_backtest_comparison(alpha_backtest, alpha_backtest, figures_dir / "residual_alpha_trend_follower.html", labels={"Raw trend follower": "Residual alpha", "Neutral trend follower": "Residual alpha"})
 
-    print(f"Downloaded columns: {', '.join(returns.columns)}")
+    source = "Downloaded" if args.download else "Loaded"
+    print(f"{source} columns: {', '.join(returns.columns)}")
     print(f"Model observations after complete-case filtering: {len(model_returns)}")
     print(f"Training observations: {len(train_returns)}; holdout observations: {len(test_returns)}")
     print("Holdout split: 70% training / 30% evaluation; no future observations used for fitting")

@@ -18,4 +18,12 @@ env/
 .env
 credentials.txt
 
-# Keep everything else (data/raw/*.csv, reports/*.csv, reports/*.html)
+# Generated model outputs are reproducible from data/raw/daily_returns.csv.
+reports/*.csv
+reports/*.pdf
+reports/experiments/
+reports/figures/
+
+# Keep the two shareable example reports.
+!reports/factor_model_explorer.html
+!reports/research_viewer.html
