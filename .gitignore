@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.DS_Store
+*.swp
+
+# Secrets
+.env
+credentials.txt
+
+# Keep everything else (data/raw/*.csv, reports/*.csv, reports/*.html)

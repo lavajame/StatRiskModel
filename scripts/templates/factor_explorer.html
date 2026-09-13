@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Factor Cockpit</title>
+<style>
+:root {
+  --bg:#07090c; --panel:#10151b; --elev:#171e26; --line:#27313b;
+  --ink:#e8eef2; --muted:#7d8d99; --dim:#4c5b66;
+  --gold:#e3b341; --cyan:#4fd1c5; --rose:#f07178;
+}
+* { box-sizing:border-box; }
+html, body { height:100%; margin:0; overflow:hidden; background:var(--bg); color:var(--ink);
+  font:13px/1.4 "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
+button, input { font:inherit; color:inherit; }
+button { cursor:pointer; }
+.app { height:100%; display:grid; grid-template-rows:48px minmax(0,1fr); min-height:0; }
+.top { display:flex; align-items:center; gap:16px; padding:0 14px; border-bottom:1px solid var(--line); background:#0c1116; }
+.brand { font-weight:700; letter-spacing:.08em; font-size:12px; text-transform:uppercase; color:var(--gold); }
+.hint { margin-left:auto; color:var(--dim); font-size:11px; display:flex; align-items:center; gap:10px; }
+.linkctl { display:flex; align-items:center; gap:8px; color:var(--muted); }
+.linkctl input[type=range] { width:110px; accent-color:var(--gold); }
+.linkctl button, .tools button { background:var(--elev); border:1px solid var(--line); border-radius:6px; padding:5px 9px; }
+.linkctl button.on { border-color:var(--gold); color:var(--gold); }
+.stage { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:0; height:100%; }
+.side { display:grid; grid-template-rows:auto minmax(0,1fr); min-height:0; background:var(--panel); border-right:1px solid var(--line); }
+.tickers { min-height:0; overflow:visible; padding:8px 8px 4px; }
+.search { width:100%; background:var(--elev); border:1px solid var(--line); border-radius:6px; padding:5px 8px; outline:none; }
+.search:focus { border-color:var(--gold); }
+.alist { margin-top:4px; display:grid; gap:0; }
+.agroup { color:var(--dim); font-size:9px; letter-spacing:.12em; text-transform:uppercase; padding:6px 6px 1px; }
+.aitem { display:flex; justify-content:space-between; gap:6px; width:100%; text-align:left; border:0; background:transparent; color:var(--ink); padding:1px 6px; border-radius:4px; font-size:12px; line-height:1.25; }
+.aitem:hover { background:var(--elev); }
+.aitem.on { background:#1d2832; outline:1px solid #314150; }
+.aitem.put { color:var(--gold); }
+.aitem small { color:var(--muted); font-size:10px; }
+.stats { border-top:1px solid var(--line); padding:10px 12px 12px; overflow:auto; min-height:0; }
+.kicker { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+h2 { margin:0 0 4px; font-size:18px; }
+.desc { color:var(--muted); margin:0 0 10px; font-size:12px; }
+.metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.met { background:var(--elev); border:1px solid var(--line); border-radius:7px; padding:8px; }
+.met b { display:block; font-size:16px; font-variant-numeric:tabular-nums; }
+.met span { color:var(--muted); font-size:10px; }
+.frows { display:grid; gap:5px; margin-top:6px; }
+.fr { display:grid; grid-template-columns:36px 1fr 42px; gap:6px; align-items:center; font-variant-numeric:tabular-nums; font-size:12px; }
+.track { height:7px; background:#0b1015; border-radius:99px; overflow:hidden; }
+.fill { height:7px; background:linear-gradient(90deg,#4fd1c5,#6aa8ff); }
+.fill.neg { background:linear-gradient(90deg,#f07178,#c28e0e); }
+.nb { margin-top:8px; color:var(--muted); font-size:11px; }
+.views { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:0; min-width:0; }
+.view { position:relative; min-height:0; min-width:0; border-right:1px solid var(--line);
+  background:radial-gradient(900px 560px at 70% 18%, #14202a 0%, #07090c 62%); }
+.view:last-child { border-right:0; }
+canvas.scene { width:100%; height:100%; display:block; cursor:grab; touch-action:none; }
+canvas.scene.grabbing { cursor:grabbing; }
+.hud { position:absolute; top:10px; left:12px; color:var(--muted); font-size:11px; pointer-events:none; }
+.hud b { color:var(--ink); }
+.sub { display:block; color:var(--dim); margin-top:2px; }
+.tools { position:absolute; top:8px; right:8px; display:flex; gap:6px; }
+.tools button:hover { border-color:var(--gold); color:var(--gold); }
+#tooltip { position:fixed; display:none; z-index:40; pointer-events:none; background:#0c1116; color:var(--ink);
+  border:1px solid var(--line); padding:6px 9px; border-radius:6px; font-size:12px; }
+</style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div class="app">
+  <header class="top">
+    <div class="brand">Factor Cockpit</div>
+    <div class="hint">
+      <span>Linked turntable · Y up · / to search</span>
+      <div class="linkctl">
+        <button type="button" id="links" class="on">Links</button>
+        <span>|ρ| ≥ <b id="linkVal">0.45</b></span>
+        <input type="range" id="linkMin" min="0.20" max="0.80" step="0.05" value="0.45">
+      </div>
+    </div>
+  </header>
+  <div class="stage">
+    <aside class="side">
+      <div class="tickers">
+        <input class="search" id="search" placeholder="Filter tickers…" spellcheck="false">
+        <div class="alist" id="alist"></div>
+      </div>
+      <div class="stats">
+        <div class="kicker" id="kicker">Benchmark</div>
+        <h2 id="title">—</h2>
+        <p class="desc" id="desc"></p>
+        <div class="metrics" id="metrics"></div>
+        <div class="kicker" style="margin-top:12px">Factor variance share</div>
+        <div class="frows" id="decomp"></div>
+        <div class="nb" id="nb"></div>
+      </div>
+    </aside>
+    <div class="views">
+      <section class="view">
+        <div class="hud"><b>Exposure</b><span class="sub">Delta loadings · residual links</span></div>
+        <canvas id="exp" class="scene"></canvas>
+      </section>
+      <section class="view">
+        <div class="hud"><b>Residuals</b><span class="sub">MDS · residual correlation</span></div>
+        <div class="tools">
+          <button type="button" id="reset">Reset</button>
+          <button type="button" id="labels">Labels</button>
+        </div>
+        <canvas id="res" class="scene"></canvas>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+const DATA = __DATA_JSON__;
+
+function rotY(t){ const c=Math.cos(t), s=Math.sin(t); return [c,0,s, 0,1,0, -s,0,c]; }
+function rotX(t){ const c=Math.cos(t), s=Math.sin(t); return [1,0,0, 0,c,-s, 0,s,c]; }
+function mul(A,B){
+  const C=new Array(9);
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++) C[3*i+j]=A[3*i]*B[j]+A[3*i+1]*B[3+j]+A[3*i+2]*B[6+j];
+  return C;
+}
+function apply(R,p){
+  return [R[0]*p[0]+R[1]*p[1]+R[2]*p[2], R[3]*p[0]+R[4]*p[1]+R[5]*p[2], R[6]*p[0]+R[7]*p[1]+R[8]*p[2]];
+}
+function viewMatrix(yaw, pitch){ return mul(rotX(pitch), rotY(yaw)); }
+function sizeCanvas(c, ctx){
+  const dpr=window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight;
+  const pw=Math.round(w*dpr), ph=Math.round(h*dpr);
+  if(c.width!==pw||c.height!==ph){ c.width=pw; c.height=ph; }
+  ctx.setTransform(dpr,0,0,dpr,0,0); return [w,h];
+}
+function fmt(v){ return Number.isFinite(v)?(v*100).toFixed(1)+'%':'n/a'; }
+function riskColor(share){
+  const t=Math.max(0,Math.min(1,share||0));
+  return `rgb(${Math.round(139+(240-139)*t)},${Math.round(209+(113-209)*t)},${Math.round(124+(120-124)*t)})`;
+}
+function pointColor(a){ return a.ticker==='^PUT' ? '#e3b341' : riskColor(a.residual_variance_share); }
+
+const assets=DATA.assets;
+const assetMap=Object.fromEntries(assets.map(a=>[a.ticker,a]));
+let selected=assets.some(a=>a.ticker==='^PUT')?'^PUT':assets[0].ticker;
+let yaw=-0.55, pitch=-0.32, zoom=1, showLabels=false, filter='', showLinks=true, linkMin=0.45;
+const PITCH_MAX=1.05;
+const residualEdges=DATA.residual_edges||[];
+const axisScales=[0,1,2].map(i=>Math.max(...assets.map(a=>Math.abs((a.delta||[])[i]||0)),.001));
+const resScales=[0,1,2].map(i=>Math.max(...DATA.residual_embedding.map(p=>Math.abs(p[i]||0)),.001));
+
+const expCanvas=document.getElementById('exp');
+const resCanvas=document.getElementById('res');
+const expCtx=expCanvas.getContext('2d');
+const resCtx=resCanvas.getContext('2d');
+const tip=document.getElementById('tooltip');
+
+function drawCloud(canvas, ctx, points, scales, labels, screenKey){
+  const [w,h]=sizeCanvas(canvas, ctx);
+  ctx.clearRect(0,0,w,h);
+  const R=viewMatrix(yaw, pitch);
+  const scale=zoom*Math.min(w,h)*0.30;
+  const project=p=>{ const q=apply(R,p); return [w/2+q[0]*scale, h/2-q[1]*scale, q[2]]; };
+  const line=(a,b,color,lw)=>{ const p1=project(a), p2=project(b); ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.stroke(); };
+  for(let t=-1.35;t<=1.351;t+=0.45){
+    line([-1.35,-1.35,t],[1.35,-1.35,t],'#1d2a33',1);
+    line([t,-1.35,-1.35],[t,1.35,-1.35],'#1d2a33',1);
+  }
+  line([-1.4,0,0],[1.4,0,0],'#3d5360',1.5);
+  line([0,-1.4,0],[0,1.4,0],'#3d5360',1.5);
+  line([0,0,-1.4],[0,0,1.4],'#3d5360',1.5);
+  ctx.fillStyle='#7d8d99'; ctx.font='11px Segoe UI';
+  const xL=project([1.55,0,0]); ctx.fillText(labels[0], xL[0]-10, xL[1]+4);
+  const yL=project([0,1.55,0]); ctx.fillText(labels[1], yL[0]-10, yL[1]+4);
+
+  const projected=points.map(pt=>{
+    const norm=pt.coords.map((v,i)=>Math.max(-1.4,Math.min(1.4, v/scales[i]*1.4)));
+    return {a:pt.a, p:project(norm)};
+  }).sort((a,b)=>a.p[2]-b.p[2]);
+  const screen=Object.fromEntries(projected.map(item=>[item.a.ticker, item.p]));
+
+  if(showLinks){
+    for(const edge of residualEdges){
+      if(Math.abs(edge.rho)<linkMin) continue;
+      const p1=screen[edge.a], p2=screen[edge.b];
+      if(!p1||!p2) continue;
+      const hot=edge.a===selected||edge.b===selected;
+      const t=Math.min(1, (Math.abs(edge.rho)-linkMin)/(1-linkMin||1));
+      ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]);
+      ctx.strokeStyle=edge.rho>=0
+        ? (hot?`rgba(79,209,197,${0.35+0.55*t})`:`rgba(79,209,197,${0.08+0.22*t})`)
+        : (hot?`rgba(240,113,120,${0.35+0.55*t})`:`rgba(240,113,120,${0.08+0.22*t})`);
+      ctx.lineWidth=hot ? 1.6+2.2*t : 0.7+1.2*t;
+      ctx.stroke();
+    }
+  }
+
+  for(const item of projected){
+    const a=item.a, [px,py]=item.p;
+    const rad=Math.max(5, Math.min(15, 5+(a.residual_volatility||.05)*30));
+    if(a.ticker===selected){
+      ctx.beginPath(); ctx.arc(px,py,rad+8,0,Math.PI*2);
+      ctx.strokeStyle='rgba(227,179,65,.55)'; ctx.lineWidth=2; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(px,py,rad,0,Math.PI*2);
+    ctx.fillStyle=pointColor(a); ctx.globalAlpha=.92; ctx.fill(); ctx.globalAlpha=1;
+    if(showLabels || a.ticker===selected || a.ticker==='^PUT'){
+      ctx.fillStyle=a.ticker==='^PUT'?'#e3b341':'#e8eef2';
+      ctx.fillText(a.ticker, px+rad+4, py+4);
+    }
+    a[screenKey]=[px,py,rad];
+  }
+}
+
+function redraw(){
+  drawCloud(expCanvas, expCtx, assets.map(a=>({a, coords:(a.delta||[]).slice(0,3).map(v=>v||0)})), axisScales, ['F1','F2'], '_es');
+  drawCloud(resCanvas, resCtx, assets.map((a,i)=>({a, coords:DATA.residual_embedding[i]||[0,0,0]})), resScales, ['D1','D2'], '_rs');
+}
+
+function bindTurntable(canvas, screenKey){
+  let dragging=false, moved=false, lx=0, ly=0;
+  canvas.addEventListener('pointerdown', e=>{
+    dragging=true; moved=false; lx=e.clientX; ly=e.clientY;
+    canvas.setPointerCapture(e.pointerId); canvas.classList.add('grabbing');
+  });
+  canvas.addEventListener('pointerup', e=>{
+    dragging=false; canvas.classList.remove('grabbing');
+    try{ canvas.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+  canvas.addEventListener('pointercancel', ()=>{ dragging=false; canvas.classList.remove('grabbing'); });
+  canvas.addEventListener('pointermove', e=>{
+    if(dragging){
+      const dx=e.clientX-lx, dy=e.clientY-ly;
+      if(Math.abs(dx)+Math.abs(dy)>1) moved=true;
+      yaw += dx * 0.0045;
+      pitch += dy * 0.0032;
+      pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, pitch));
+      lx=e.clientX; ly=e.clientY;
+      redraw();
+    } else hover(e, canvas, screenKey);
+  });
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    zoom=Math.max(0.5, Math.min(2.4, zoom*(e.deltaY<0?1.08:0.93)));
+    redraw();
+  }, {passive:false});
+  canvas.addEventListener('click', e=>{
+    if(moved) return;
+    const r=canvas.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    const hit=assets.find(a=>a[screenKey] && Math.hypot(a[screenKey][0]-x,a[screenKey][1]-y)<a[screenKey][2]+8);
+    if(hit) select(hit.ticker);
+  });
+}
+function hover(e, canvas, key){
+  const r=canvas.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const hit=assets.find(a=>a[key] && Math.hypot(a[key][0]-mx,a[key][1]-my)<a[key][2]+8);
+  if(!hit){ tip.style.display='none'; return; }
+  tip.textContent=`${hit.label}  ·  OOS R² ${fmt(hit.oos_r2)}  ·  resid ${fmt(hit.residual_volatility)}`;
+  tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-8)+'px';
+}
+
+function renderList(){
+  const q=filter.trim().toLowerCase();
+  const groups={Benchmark:[], Other:[]};
+  assets.forEach(a=>{ if(!q || a.ticker.toLowerCase().includes(q) || a.label.toLowerCase().includes(q)) (groups[a.group]||groups.Other).push(a); });
+  const box=document.getElementById('alist'); box.innerHTML='';
+  Object.entries(groups).forEach(([g,items])=>{
+    if(!items.length) return;
+    const h=document.createElement('div'); h.className='agroup'; h.textContent=g; box.appendChild(h);
+    items.forEach(a=>{
+      const b=document.createElement('button');
+      b.className='aitem'+(a.ticker===selected?' on':'')+(a.ticker==='^PUT'?' put':'');
+      b.innerHTML=`<span>${a.ticker}</span><small>${fmt(a.oos_r2)}</small>`;
+      b.onclick=()=>select(a.ticker);
+      box.appendChild(b);
+    });
+  });
+}
+function select(ticker){ selected=ticker; renderList(); renderDetail(); redraw(); }
+function renderDetail(){
+  const a=assetMap[selected];
+  document.getElementById('kicker').textContent=a.group+(a.ticker==='^PUT'?' · strategy index':'');
+  document.getElementById('title').textContent=a.ticker;
+  document.getElementById('desc').textContent=a.label.replace(a.ticker+' - ','');
+  document.getElementById('metrics').innerHTML=`
+    <div class="met"><b>${fmt(a.oos_r2)}</b><span>holdout OOS R²</span></div>
+    <div class="met"><b>${fmt(a.residual_variance_share)}</b><span>residual share</span></div>
+    <div class="met"><b>${fmt(a.realized_volatility)}</b><span>realized vol</span></div>
+    <div class="met"><b>${fmt(a.systematic_volatility)}</b><span>systematic vol</span></div>
+    <div class="met"><b>${fmt(a.residual_volatility)}</b><span>residual vol</span></div>
+    <div class="met"><b>${fmt(a.r2_train)}</b><span>training R²</span></div>`;
+  const vs=a.variance_share||[];
+  const mx=Math.max(...vs.map(v=>Math.abs(v)),.001);
+  document.getElementById('decomp').innerHTML=vs.map((v,i)=>`
+    <div class="fr"><span>F${i+1}</span>
+      <div class="track"><div class="fill${v<0?' neg':''}" style="width:${Math.min(100,Math.abs(v)/mx*100).toFixed(1)}%"></div></div>
+      <span>${fmt(v)}</span></div>`).join('');
+  const nb=(a.residual_neighbors||[]).map(n=>`${n.ticker} (${n.correlation.toFixed(2)})`).join(' · ');
+  document.getElementById('nb').textContent=nb?('Nearest residuals: '+nb):'';
+}
+
+document.getElementById('reset').onclick=()=>{ yaw=-0.55; pitch=-0.32; zoom=1; redraw(); };
+document.getElementById('labels').onclick=()=>{ showLabels=!showLabels; redraw(); };
+document.getElementById('links').onclick=()=>{
+  showLinks=!showLinks;
+  document.getElementById('links').classList.toggle('on', showLinks);
+  redraw();
+};
+document.getElementById('linkMin').addEventListener('input', e=>{
+  linkMin=parseFloat(e.target.value);
+  document.getElementById('linkVal').textContent=linkMin.toFixed(2);
+  redraw();
+});
+document.getElementById('search').addEventListener('input', e=>{ filter=e.target.value; renderList(); });
+window.addEventListener('keydown', e=>{
+  if(e.key==='/' && document.activeElement.tagName!=='INPUT'){ e.preventDefault(); document.getElementById('search').focus(); }
+});
+window.addEventListener('resize', redraw);
+bindTurntable(expCanvas, '_es');
+bindTurntable(resCanvas, '_rs');
+renderList(); renderDetail(); redraw();
+</script>
+</body>
+</html>

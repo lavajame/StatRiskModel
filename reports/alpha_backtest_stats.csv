@@ -1,0 +1,2 @@
+strategy,target_vol,max_leverage,annual_vol,cagr,max_drawdown,sharpe,final_return,annual_turnover,portfolio_age
+residual_alpha,0.1,2.5,0.089675836440534,-0.00434491314804597,0.140709454430253,-0.0038033555742198514,-0.01887857556243855,40.773491526642495,6.180486158153427

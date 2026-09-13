@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Portfolio factor decomposition and attribution</title><style>
+:root { color-scheme: light; --ink:#0f1b24; --ink-soft:#3b4a57; --muted:#8895a5; --grid:#e6edf3; --border:#e2e8ef; --accent:#176b87; --accent-2:#0e8a9b; --warm:#d95f59; --good:#2f855a; --shadow:0 14px 40px #0f1b2424; }
+* { box-sizing:border-box; }
+html { -webkit-font-smoothing:antialiased; }
+body { margin:0; background:radial-gradient(1200px 600px at 80% -10%, #eef5f8 0%, #f5f7f8 55%); color:var(--ink); font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main { max-width:1120px; margin:34px auto; padding:0 24px 60px; }
+h1 { font-size:30px; margin:0 0 6px; letter-spacing:-.02em; font-weight:700; }
+.subtitle { color:var(--muted); margin:0 0 22px; font-size:14px; }
+h2 { font-size:13px; margin:30px 0 12px; color:var(--muted); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+.panel { background:linear-gradient(180deg,#ffffff,#fcfdff); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); }
+.legend { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+.legend button, .toolbar button { border:1px solid var(--border); background:rgba(255,255,255,.7); backdrop-filter:blur(4px); border-radius:999px; padding:7px 13px; color:var(--ink); cursor:pointer; font-size:13px; font-weight:500; transition:all .15s ease; }
+.legend button:hover, .toolbar button:hover { border-color:var(--accent); background:#ffffff; transform:translateY(-1px); box-shadow:0 4px 12px #0f1b2418; }
+.legend button.off { opacity:.42; text-decoration:line-through; background:#eef1f4; }
+svg { width:100%; min-width:640px; height:auto; display:block; }
+.grid { stroke:var(--grid); stroke-width:1; }
+.axis { fill:var(--muted); font-size:11px; }
+.axis-label { fill:var(--ink-soft); font-size:11px; font-weight:600; }
+.grid-value { fill:var(--muted); font-size:10px; }
+.path { fill:none; stroke-width:2.6; stroke-linejoin:round; stroke-linecap:round; }
+.dot { stroke:#ffffff; stroke-width:1.5; }
+.band { stroke:#ffffff; stroke-width:1; opacity:.6; }
+.area { stroke:none; }
+.note { color:var(--muted); margin:0 0 14px; font-size:13px; }
+.table-wrap { overflow:auto; border-radius:10px; border:1px solid var(--border); }
+table { border-collapse:collapse; width:100%; min-width:640px; font-size:13px; }
+th, td { border-bottom:1px solid #eef1f4; padding:9px 12px; text-align:right; white-space:nowrap; }
+th:first-child, td:first-child { text-align:left; }
+th { color:var(--muted); font-weight:600; background:#fafbfc; position:sticky; top:0; }
+.heat td { min-width:96px; text-align:center; transition:transform .12s ease, box-shadow .12s ease; cursor:pointer; }
+.heat td:hover { outline:2.5px solid var(--accent); transform:scale(1.05); box-shadow:0 6px 20px #0f1b241e; z-index:2; position:relative; }
+.bar { height:14px; border-radius:3px; min-width:3px; transition:width .3s ease; }
+.bar.warm { background:var(--warm); }
+.bar.good { background:var(--good); }
+.bar.band { background:#eef1f4; }
+.metric { display:grid; grid-template-columns:minmax(160px,1.1fr) 1fr 120px; gap:12px; align-items:center; margin:8px 0; }
+.metric .name { overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+.metric .rank { color:var(--accent); font-size:11px; font-weight:700; margin-right:8px; }
+.small { color:var(--muted); font-size:12px; }
+.kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:0 0 24px; }
+.kpi .card { background:linear-gradient(180deg,#ffffff,#f6f9fb); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); text-align:center; }
+.kpi .kpi-value { font-size:24px; font-weight:700; letter-spacing:-.02em; }
+.kpi .kpi-label { color:var(--muted); font-size:12px; margin-top:2px; }
+@media (max-width:760px) { main { margin:16px auto; padding:0 12px 28px; } h1 { font-size:23px; } .panel { padding:12px; } }
+</style></head><body><main><h1>Portfolio factor decomposition and attribution</h1><div class="panel"><p class="note">Variance shares are covariance allocations to total portfolio variance; return contributions are beta times mean factor return. SPX_beta uses SPY as its proxy.</p><div class="table-wrap"><table><thead><tr><th>Strategy</th><th>Source</th><th>Beta</th><th>Factor vol</th><th>Variance share</th><th>Annual return</th></tr></thead><tbody><tr><td>neutral / Factor_1</td><td>-0.001</td><td>4240.07%</td><td>9.42%</td><td>0.89%</td></tr><tr><td>neutral / Factor_2</td><td>0.001</td><td>3719.26%</td><td>20.35%</td><td>0.17%</td></tr><tr><td>neutral / Factor_3</td><td>-0.000</td><td>1881.68%</td><td>0.85%</td><td>-0.14%</td></tr><tr><td>neutral / Factor_4</td><td>0.002</td><td>1403.49%</td><td>6.32%</td><td>-1.17%</td></tr><tr><td>neutral / Factor_5</td><td>0.000</td><td>1315.61%</td><td>0.09%</td><td>-0.04%</td></tr><tr><td>neutral / Factor_6</td><td>0.002</td><td>1375.76%</td><td>3.81%</td><td>1.15%</td></tr><tr><td>neutral / Factor_7</td><td>-0.000</td><td>1290.12%</td><td>0.44%</td><td>-0.04%</td></tr><tr><td>neutral / Factor_8</td><td>0.001</td><td>1319.44%</td><td>3.78%</td><td>-0.07%</td></tr><tr><td>neutral / SPX_beta</td><td>0.205</td><td>16.66%</td><td>0.37%</td><td>3.09%</td></tr><tr><td>neutral / Intercept</td><td>0.000</td><td>0.00%</td><td>0.00%</td><td>0.00%</td></tr><tr><td>neutral / Residual</td><td>0.000</td><td>7.48%</td><td>54.57%</td><td>0.10%</td></tr><tr><td>raw / Factor_1</td><td>0.000</td><td>4240.07%</td><td>14.02%</td><td>-0.33%</td></tr><tr><td>raw / Factor_2</td><td>0.001</td><td>3719.26%</td><td>24.26%</td><td>0.16%</td></tr><tr><td>raw / Factor_3</td><td>-0.000</td><td>1881.68%</td><td>0.11%</td><td>-0.14%</td></tr><tr><td>raw / Factor_4</td><td>0.000</td><td>1403.49%</td><td>0.63%</td><td>-0.26%</td></tr><tr><td>raw / Factor_5</td><td>0.000</td><td>1315.61%</td><td>0.04%</td><td>-0.03%</td></tr><tr><td>raw / Factor_6</td><td>0.001</td><td>1375.76%</td><td>-0.15%</td><td>0.41%</td></tr><tr><td>raw / Factor_7</td><td>0.000</td><td>1290.12%</td><td>0.05%</td><td>0.01%</td></tr><tr><td>raw / Factor_8</td><td>-0.000</td><td>1319.44%</td><td>-0.01%</td><td>0.00%</td></tr><tr><td>raw / SPX_beta</td><td>0.355</td><td>16.66%</td><td>49.19%</td><td>5.36%</td></tr><tr><td>raw / Intercept</td><td>0.000</td><td>0.00%</td><td>0.00%</td><td>0.00%</td></tr><tr><td>raw / Residual</td><td>0.000</td><td>3.56%</td><td>11.91%</td><td>3.37%</td></tr></tbody></table></div></div></main><script>
+function toggleSeries(button) {
+  const key = button.dataset.series;
+  button.classList.toggle('off');
+  document.querySelectorAll('[data-line="' + CSS.escape(key) + '"]').forEach(el => el.classList.toggle('hidden'));
+}
+function sortMetrics() {
+  const box = document.querySelector('[data-metrics]');
+  if (!box) return;
+  box.querySelectorAll('.metric').sort((a, b) => {
+    const ta = parseFloat(a.querySelector('.small').dataset.value || '0');
+    const tb = parseFloat(b.querySelector('.small').dataset.value || '0');
+    return tb - ta;
+  });
+}
+function sortAsc() {
+  document.querySelector('[data-sort]')?.classList.toggle('off');
+  const box = document.querySelector('[data-metrics]');
+  if (!box) return;
+  box.querySelectorAll('.metric').sort((a, b) => {
+    const ta = parseFloat(a.querySelector('.small').dataset.value || '0');
+    const tb = parseFloat(b.querySelector('.small').dataset.value || '0');
+    return ta - tb;
+  });
+  box.querySelectorAll('.metric').forEach(row => box.appendChild(row));
+}
+function animateBars() {
+  document.querySelectorAll('[data-bar]').forEach(bar => {
+    const target = parseFloat(bar.dataset.width);
+    bar.style.width = '0%';
+    requestAnimationFrame(() => { bar.style.transition = 'width .8s cubic-bezier(.2,.8,.2,1)'; bar.style.width = target + '%'; });
+  });
+}
+</script></body></html>

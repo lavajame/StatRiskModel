@@ -1,0 +1,14 @@
+{
+  "start": "1996-01-01",
+  "end": "2026-08-27",
+  "tickers": [
+    "^PUT",
+    "^SPX"
+  ],
+  "price_field": "Adj Close",
+  "performance_base": 100.0,
+  "common_start": "1996-08-05",
+  "common_end": "2026-08-26",
+  "observations": 7550,
+  "note": "Returns and indexed performance are calculated from yfinance adjusted-close data on the common observation dates."
+}
