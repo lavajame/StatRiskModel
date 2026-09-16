@@ -24,6 +24,11 @@ def make_payload() -> dict:
     factors = pd.read_csv(ROOT / "oos_latent_factor_moves.csv", index_col=0)
     fitted = pd.read_csv(ROOT / "strategy_oos_fitted.csv", index_col=0)
     residual = pd.read_csv(ROOT / "strategy_oos_residuals.csv", index_col=0)
+    residual_weights = pd.read_csv(ROOT / "trend_residual_fund_weights.csv", index_col=0)
+    model_residual_returns = (
+        residual_weights * residual.reindex(index=residual_weights.index, columns=residual_weights.columns)
+    ).sum(axis=1).fillna(0.0)
+    model_residual_equity = (1.0 + model_residual_returns).cumprod()
     residual_equal_weight_returns = residual.fillna(0.0).mean(axis=1)
     residual_equal_weight_equity = (1.0 + residual_equal_weight_returns).cumprod()
     residual_vol, residual_cagr, residual_drawdown, residual_sharpe, _ = compute_stats(
@@ -42,6 +47,7 @@ def make_payload() -> dict:
     return {
         "stats": stats, "alpha": alpha_stats, "alpha_equity": alpha_equity,
         "trend_equity": trend_equity.to_dict("list"),
+        "model_residual_equity": model_residual_equity.tolist(),
         "residual_equal_weight_stats": {
             "strategy": "Naive equal-weight residual diagnostic",
             "target_vol": 0.0,
@@ -102,7 +108,7 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
     )
     html = html.replace(
         "draw('strategyChart',{'Equal-weight raw funds':cum(raw),'Equal-weight residual funds':cum(res),'Residual alpha trend follower':DATA.alpha_equity},{'Equal-weight raw funds':true,'Equal-weight residual funds':true,'Residual alpha trend follower':true},'strategyLegend')",
-        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
+        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Model residual signal (not tradeable)':DATA.model_residual_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Model residual signal (not tradeable)':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
     )
     html = html.replace(
         "Equal-weight raw funds",
@@ -124,11 +130,11 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
     )
     html = html.replace(
         "Raw and residual equal-weight fund benchmarks are compared with the trend follower on the residual matrix. Signals and volatility estimates are lagged one day.",
-        "The diagnostic residual average is shown beside a modeled tradeable implementation: long fund positions plus a benchmark ETF hedge, with lagged signals, weekly rebalancing, volatility targeting, and a leverage cap.",
+        "The chart separates the naive residual average, the model-only residual signal, and the tradeable implementation: raw fund positions plus a benchmark ETF hedge, with lagged signals, weekly rebalancing, volatility targeting, and a leverage cap.",
     )
     html = html.replace(
         '<div id="strategyTable" class="tablewrap">',
-        '<p class="note">The replicable line uses the generated fund holdings and benchmark hedge exposures below. It is the executable approximation; the naive residual line is a diagnostic only.</p><div id="strategyTable" class="tablewrap">',
+        '<p class="note">The gold replicable line uses raw fund P&amp;L plus generated benchmark hedge exposures. The blue model residual signal compounds demeaned model residuals and is not tradeable; the red equal-weight residual line is a diagnostic only.</p><div id="strategyTable" class="tablewrap">',
     )
     html = html.replace(
         '<a href="alpha_backtest_stats.csv">Alpha statistics CSV</a>',
