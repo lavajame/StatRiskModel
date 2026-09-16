@@ -24,6 +24,7 @@ def make_payload() -> dict:
     factors = pd.read_csv(ROOT / "oos_latent_factor_moves.csv", index_col=0)
     fitted = pd.read_csv(ROOT / "strategy_oos_fitted.csv", index_col=0)
     residual = pd.read_csv(ROOT / "strategy_oos_residuals.csv", index_col=0)
+    executable_residual = pd.read_csv(ROOT / "strategy_executable_residuals.csv", index_col=0)
     residual_weights = pd.read_csv(ROOT / "trend_residual_fund_weights.csv", index_col=0)
     model_residual_returns = (
         residual_weights * residual.reindex(index=residual_weights.index, columns=residual_weights.columns)
@@ -31,8 +32,13 @@ def make_payload() -> dict:
     model_residual_equity = (1.0 + model_residual_returns).cumprod()
     residual_equal_weight_returns = residual.fillna(0.0).mean(axis=1)
     residual_equal_weight_equity = (1.0 + residual_equal_weight_returns).cumprod()
+    executable_equal_weight_returns = executable_residual.fillna(0.0).mean(axis=1)
+    executable_equal_weight_equity = (1.0 + executable_equal_weight_returns).cumprod()
     residual_vol, residual_cagr, residual_drawdown, residual_sharpe, _ = compute_stats(
         residual_equal_weight_equity, residual_equal_weight_returns
+    )
+    executable_vol, executable_cagr, executable_drawdown, executable_sharpe, _ = compute_stats(
+        executable_equal_weight_equity, executable_equal_weight_returns
     )
     raw = pd.read_csv(ROOT.parent / "data/raw/daily_returns.csv", index_col=0)[fitted.columns].loc[fitted.index]
     loads = pd.read_csv(ROOT / "frozen_factor_loadings.csv", index_col=0)
@@ -48,6 +54,7 @@ def make_payload() -> dict:
         "stats": stats, "alpha": alpha_stats, "alpha_equity": alpha_equity,
         "trend_equity": trend_equity.to_dict("list"),
         "model_residual_equity": model_residual_equity.tolist(),
+        "executable_residual_equity": executable_equal_weight_equity.tolist(),
         "residual_equal_weight_stats": {
             "strategy": "Naive equal-weight residual diagnostic",
             "target_vol": 0.0,
@@ -55,6 +62,14 @@ def make_payload() -> dict:
             "cagr": residual_cagr,
             "max_drawdown": -residual_drawdown,
             "sharpe": residual_sharpe,
+        },
+        "executable_residual_stats": {
+            "strategy": "Executable raw-return factor residual",
+            "target_vol": 0.0,
+            "annual_vol": executable_vol,
+            "cagr": executable_cagr,
+            "max_drawdown": -executable_drawdown,
+            "sharpe": executable_sharpe,
         },
         "factors": {"dates": [str(x) for x in factors.index], "names": list(factors), "values": factors.fillna(0).to_numpy().tolist()},
         "funds": {"dates": [str(x) for x in fitted.index], "names": list(fitted), "raw": raw.fillna(0).to_numpy().tolist(), "fitted": fitted.fillna(0).to_numpy().tolist(), "residual": residual.fillna(0).to_numpy().tolist()},
@@ -83,12 +98,20 @@ function scatter(){{const svg=$('scatter');svg.innerHTML='<line x1="70" y1="550"
 function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)));$('fundSelect').onchange=fundView;$('benchmarkCount').textContent=DATA.benchmarks.length;$('fundCount').textContent=DATA.funds.names.length;$('obsCount').textContent=DATA.funds.dates.length;$('benchTable').innerHTML='<table><thead><tr><th>Cluster order</th><th>Benchmark</th></tr></thead><tbody>'+DATA.benchmarks.map((x,i)=>`<tr><td>${{i+1}}</td><td>${{x}}</td></tr>`).join('')+'</tbody></table>';$('loadTable').innerHTML='<table><thead><tr><th>Benchmark</th>'+Object.keys(DATA.betas[DATA.benchmarks[0]]||{{}}).map(x=>`<th>${{x}}</th>`).join('')+'</tr></thead><tbody>'+DATA.benchmarks.map(x=>`<tr><td>${{x}}</td>`+Object.keys(DATA.betas[x]||{{}}).map(k=>`<td>${{Number(DATA.betas[x][k]).toFixed(4)}}</td>`).join('')+'</tr>').join('')+'</tbody></table>';draw('factorChart',Object.fromEntries(DATA.factors.names.map((n,j)=>[n,DATA.factors.values.map(r=>r[j])])),Object.fromEntries(DATA.factors.names.map(n=>[n,true])),'factorLegend');const raw=DATA.funds.raw.map(r=>r.reduce((a,v)=>a+v,0)/DATA.funds.names.length),res=DATA.funds.residual.map(r=>r.reduce((a,v)=>a+v,0)/DATA.funds.names.length);draw('strategyChart',{{'Equal-weight raw funds':cum(raw),'Equal-weight residual funds':cum(res),'Residual alpha trend follower':DATA.alpha_equity}},{{'Equal-weight raw funds':true,'Equal-weight residual funds':true,'Residual alpha trend follower':true}},'strategyLegend');let h='<table><thead><tr><th>Strategy</th><th>Target vol</th><th>Realized vol</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr></thead><tbody>';DATA.stats.forEach(r=>h+=`<tr><td>${{r.strategy}}</td><td>${{(r.target_vol*100).toFixed(1)}}%</td><td>${{(r.annual_vol*100).toFixed(1)}}%</td><td>${{(r.cagr*100).toFixed(1)}}%</td><td>${{(r.max_drawdown*100).toFixed(1)}}%</td><td>${{r.sharpe.toFixed(2)}}</td></tr>`);h+=`<tr><td>Residual alpha</td><td>${{(DATA.alpha.target_vol*100).toFixed(1)}}%</td><td>${{(DATA.alpha.annual_vol*100).toFixed(1)}}%</td><td>${{(DATA.alpha.cagr*100).toFixed(1)}}%</td><td>${{(DATA.alpha.max_drawdown*100).toFixed(1)}}%</td><td>${{DATA.alpha.sharpe.toFixed(2)}}</td></tr></tbody></table>`;$('strategyTable').innerHTML=h;fundView();scatter()}}const buttons=[...document.querySelectorAll('nav button')],chapters=[...document.querySelectorAll('.chapter')];buttons.forEach(b=>b.onclick=()=>{{buttons.forEach(x=>x.classList.toggle('active',x===b));chapters.forEach(c=>c.classList.toggle('active',c.id===b.dataset.tab));history.replaceState(null,'','#'+b.dataset.tab)}});init();</script></body></html>'''
 
     diagnostic = data["residual_equal_weight_stats"]
+    executable = data["executable_residual_stats"]
     diagnostic_row = (
         f"<tr><td>{diagnostic['strategy']}</td><td>n/a</td>"
         f"<td>{diagnostic['annual_vol'] * 100:.1f}%</td>"
         f"<td>{diagnostic['cagr'] * 100:.1f}%</td>"
         f"<td>{diagnostic['max_drawdown'] * 100:.1f}%</td>"
         f"<td>{diagnostic['sharpe']:.2f}</td></tr>"
+    )
+    executable_row = (
+        f"<tr><td>{executable['strategy']}</td><td>n/a</td>"
+        f"<td>{executable['annual_vol'] * 100:.1f}%</td>"
+        f"<td>{executable['cagr'] * 100:.1f}%</td>"
+        f"<td>{executable['max_drawdown'] * 100:.1f}%</td>"
+        f"<td>{executable['sharpe']:.2f}</td></tr>"
     )
     html = html.replace(
         '<div id="strategyLegend" class="legend"></div>',
@@ -104,11 +127,12 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
         "$('strategyTable').innerHTML=h;",
         "$('strategyTable').innerHTML=h.replace('</tbody>', "
         + json.dumps(diagnostic_row)
+        + " + " + json.dumps(executable_row)
         + " + '</tbody>');",
     )
     html = html.replace(
         "draw('strategyChart',{'Equal-weight raw funds':cum(raw),'Equal-weight residual funds':cum(res),'Residual alpha trend follower':DATA.alpha_equity},{'Equal-weight raw funds':true,'Equal-weight residual funds':true,'Residual alpha trend follower':true},'strategyLegend')",
-        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Model residual signal (not tradeable)':DATA.model_residual_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Model residual signal (not tradeable)':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
+        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Executable raw-return factor residual':DATA.executable_residual_equity,'Model residual signal (not tradeable)':DATA.model_residual_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Executable raw-return factor residual':true,'Model residual signal (not tradeable)':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
     )
     html = html.replace(
         "Equal-weight raw funds",
@@ -134,11 +158,11 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
     )
     html = html.replace(
         '<div id="strategyTable" class="tablewrap">',
-        '<p class="note">The gold replicable line uses raw fund P&amp;L plus generated benchmark hedge exposures. The blue model residual signal compounds demeaned model residuals and is not tradeable; the red equal-weight residual line is a diagnostic only.</p><div id="strategyTable" class="tablewrap">',
+        '<p class="note">The gold line is the existing residual trend strategy. The executable raw-return factor residual uses benchmark-hedgeable factors and is the cleanest tradeable analogue to the red diagnostic; the model residual still uses standardized latent factors and is shown for comparison.</p><div id="strategyTable" class="tablewrap">',
     )
     html = html.replace(
         '<a href="alpha_backtest_stats.csv">Alpha statistics CSV</a>',
-        '<a href="alpha_backtest_stats.csv">Tradeable strategy statistics</a><a href="trend_residual_fund_weights.csv">Fund holdings CSV</a><a href="trend_residual_benchmark_hedge_exposures.csv">Benchmark hedge CSV</a>',
+        '<a href="alpha_backtest_stats.csv">Tradeable strategy statistics</a><a href="strategy_executable_residuals.csv">Executable residual CSV</a><a href="trend_residual_fund_weights.csv">Fund holdings CSV</a><a href="trend_residual_benchmark_hedge_exposures.csv">Benchmark hedge CSV</a>',
     )
     return html
 

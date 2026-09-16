@@ -339,6 +339,25 @@ def main() -> None:
     strategy_exposures.to_csv(args.output / "strategy_train_exposures.csv")
     strategy_residuals.to_csv(args.output / "strategy_oos_residuals.csv")
     strategy_fitted.to_csv(args.output / "strategy_oos_fitted.csv")
+    # Refit fund exposures to benchmark factor portfolios in raw return units.
+    # Unlike standardized latent factors, these factor returns are directly
+    # reproducible with benchmark holdings and therefore hedgeable.
+    executable_factor_map = np.linalg.pinv(fitted_space.T)
+    train_factor_portfolios = train_returns.loc[:, model_returns.columns].to_numpy() @ executable_factor_map
+    test_factor_portfolios = test_returns.loc[:, model_returns.columns].to_numpy() @ executable_factor_map
+    executable_betas = []
+    for ticker in strategy_returns.columns:
+        y = strategy_returns.loc[train_returns.index, ticker].to_numpy(dtype=float)
+        valid = np.isfinite(y) & np.isfinite(train_factor_portfolios).all(axis=1)
+        executable_betas.append(np.linalg.lstsq(train_factor_portfolios[valid], y[valid], rcond=None)[0])
+    executable_betas = np.asarray(executable_betas)
+    executable_fitted = pd.DataFrame(
+        test_factor_portfolios @ executable_betas.T,
+        index=test_returns.index,
+        columns=strategy_returns.columns,
+    )
+    executable_residuals = strategy_returns.loc[test_returns.index] - executable_fitted
+    executable_residuals.to_csv(args.output / "strategy_executable_residuals.csv")
     strategy_factor_decomposition.to_csv(
         args.output / "strategy_factor_variance_decomposition.csv"
     )
