@@ -11,6 +11,12 @@ OUT = ROOT / "research_viewer.html"
 
 def make_payload() -> dict:
     stats = pd.read_csv(ROOT / "backtest_stats.csv").to_dict("records")
+    strategy_labels = {
+        "raw": "Trend-following raw funds",
+        "neutral": "Trend-following factor-neutral funds",
+    }
+    for row in stats:
+        row["strategy"] = strategy_labels.get(row["strategy"], row["strategy"])
     alpha_stats = pd.read_csv(ROOT / "alpha_backtest_stats.csv").to_dict("records")[0]
     alpha_equity = pd.read_csv(ROOT / "alpha_backtest_equity.csv", index_col=0).iloc[:, 0].fillna(1).tolist()
     factors = pd.read_csv(ROOT / "oos_latent_factor_moves.csv", index_col=0)
@@ -90,6 +96,36 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
         "$('strategyTable').innerHTML=h.replace('</tbody>', "
         + json.dumps(diagnostic_row)
         + " + '</tbody>');",
+    )
+    html = html.replace(
+        "Equal-weight raw funds",
+        "Equal-weight raw fund benchmark",
+    )
+    html = html.replace(
+        "Equal-weight residual funds",
+        "Naive equal-weight residual diagnostic",
+    )
+    html = html.replace(
+        "Residual alpha trend follower",
+        "Replicable residual fund + benchmark hedge",
+    )
+    html = html.replace('<td>raw</td>', '<td>Trend-following raw funds</td>')
+    html = html.replace('<td>neutral</td>', '<td>Trend-following factor-neutral funds</td>')
+    html = html.replace(
+        '<td>Residual alpha</td>',
+        '<td>Replicable residual fund + benchmark hedge</td>',
+    )
+    html = html.replace(
+        "Raw and residual equal-weight fund benchmarks are compared with the trend follower on the residual matrix. Signals and volatility estimates are lagged one day.",
+        "The diagnostic residual average is shown beside a modeled tradeable implementation: long fund positions plus a benchmark ETF hedge, with lagged signals, weekly rebalancing, volatility targeting, and a leverage cap.",
+    )
+    html = html.replace(
+        '<div id="strategyTable" class="tablewrap">',
+        '<p class="note">The replicable line uses the generated fund holdings and benchmark hedge exposures below. It is the executable approximation; the naive residual line is a diagnostic only.</p><div id="strategyTable" class="tablewrap">',
+    )
+    html = html.replace(
+        '<a href="alpha_backtest_stats.csv">Alpha statistics CSV</a>',
+        '<a href="alpha_backtest_stats.csv">Tradeable strategy statistics</a><a href="trend_residual_fund_weights.csv">Fund holdings CSV</a><a href="trend_residual_benchmark_hedge_exposures.csv">Benchmark hedge CSV</a>',
     )
     return html
 
