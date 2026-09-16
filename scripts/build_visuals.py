@@ -536,7 +536,12 @@ def main() -> None:
     hedge_returns["Cash"] = 0.0
     benchmark_hedges = weekly_rebalanced_weights(benchmark_hedges, hedge_returns)
     combined_weights = pd.concat([fund_weights, benchmark_hedges], axis=1)
-    combined_returns = pd.concat([strategy_residuals.reindex(combined_weights.index), hedge_returns.reindex(combined_weights.index)], axis=1)
+    fund_raw_returns = strategy_returns.reindex(
+        index=combined_weights.index, columns=fund_weights.columns
+    )
+    combined_returns = pd.concat(
+        [fund_raw_returns, hedge_returns.reindex(combined_weights.index)], axis=1
+    )
     combined_returns = combined_returns.loc[:, ~combined_returns.columns.duplicated()].fillna(0.0)
     combined_daily = (combined_weights * combined_returns.reindex(columns=combined_weights.columns)).sum(axis=1)
     combined_volatility = combined_daily.ewm(alpha=0.06, adjust=False).std(bias=False).mul(np.sqrt(252.0)).shift(1)
