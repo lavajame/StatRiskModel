@@ -142,6 +142,24 @@ def run_trend_following(returns: pd.DataFrame, factor_returns: pd.DataFrame, tar
     return BacktestResult("raw", equity_curve, daily_returns, target_vol, float(weights.abs().sum(axis=1).max()), weights)
 
 
+def run_signed_residual_momentum(returns: pd.DataFrame, target_vol: float = 0.10,
+                                 signal_window: int = 252, vol_window: int = 63,
+                                 max_leverage: float = 2.0) -> BacktestResult:
+    """Trade executable residuals long-short using lagged signed momentum."""
+    signals = trend_signal(returns, signal_window)
+    weights = signals.div(signals.abs().sum(axis=1).replace(0.0, np.nan), axis=0)
+    weights = scale_to_target_vol(
+        weights, rolling_volatility(returns, vol_window), target_vol, max_leverage
+    )
+    weights = weekly_rebalanced_weights(weights, returns)
+    daily_returns = (weights * returns).sum(axis=1)
+    equity_curve = (1.0 + daily_returns).cumprod()
+    return BacktestResult(
+        "signed_residual_momentum", equity_curve, daily_returns, target_vol,
+        float(weights.abs().sum(axis=1).max()), weights
+    )
+
+
 def daily_beta(portfolio_returns: pd.Series, factor_returns: pd.DataFrame) -> float:
     """Daily average beta of a portfolio return series against the factor portfolio."""
     factor_returns = factor_returns.to_numpy().astype(float).ravel()

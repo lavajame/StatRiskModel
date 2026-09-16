@@ -19,6 +19,8 @@ def make_payload() -> dict:
         row["strategy"] = strategy_labels.get(row["strategy"], row["strategy"])
     alpha_stats = pd.read_csv(ROOT / "alpha_backtest_stats.csv").to_dict("records")[0]
     alpha_equity = pd.read_csv(ROOT / "alpha_backtest_equity.csv", index_col=0).iloc[:, 0].fillna(1).tolist()
+    signed_stats = pd.read_csv(ROOT / "signed_residual_momentum_stats.csv").to_dict("records")[0]
+    signed_equity = pd.read_csv(ROOT / "signed_residual_momentum_equity.csv", index_col=0).iloc[:, 0].fillna(1).tolist()
     trend_equity = pd.read_csv(ROOT / "backtest_equity.csv", index_col=0).fillna(1.0).tail(len(alpha_equity))
     trend_equity = trend_equity.div(trend_equity.iloc[0])
     factors = pd.read_csv(ROOT / "oos_latent_factor_moves.csv", index_col=0)
@@ -52,6 +54,7 @@ def make_payload() -> dict:
             points.append({"a": a, "b": b, "raw": x, "residual": y, "delta": y - x})
     return {
         "stats": stats, "alpha": alpha_stats, "alpha_equity": alpha_equity,
+        "signed_stats": signed_stats, "signed_equity": signed_equity,
         "trend_equity": trend_equity.to_dict("list"),
         "model_residual_equity": model_residual_equity.tolist(),
         "executable_residual_equity": executable_equal_weight_equity.tolist(),
@@ -113,6 +116,14 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
         f"<td>{executable['max_drawdown'] * 100:.1f}%</td>"
         f"<td>{executable['sharpe']:.2f}</td></tr>"
     )
+    signed = data["signed_stats"]
+    signed_row = (
+        f"<tr><td>Tradeable signed residual momentum</td><td>{signed['target_vol'] * 100:.1f}%</td>"
+        f"<td>{signed['annual_vol'] * 100:.1f}%</td>"
+        f"<td>{signed['cagr'] * 100:.1f}%</td>"
+        f"<td>{signed['max_drawdown'] * 100:.1f}%</td>"
+        f"<td>{signed['sharpe']:.2f}</td></tr>"
+    )
     html = html.replace(
         '<div id="strategyLegend" class="legend"></div>',
         '<div class="axis-label">Y-axis: cumulative wealth (1.0 = start)</div>'
@@ -128,11 +139,12 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
         "$('strategyTable').innerHTML=h.replace('</tbody>', "
         + json.dumps(diagnostic_row)
         + " + " + json.dumps(executable_row)
+        + " + " + json.dumps(signed_row)
         + " + '</tbody>');",
     )
     html = html.replace(
         "draw('strategyChart',{'Equal-weight raw funds':cum(raw),'Equal-weight residual funds':cum(res),'Residual alpha trend follower':DATA.alpha_equity},{'Equal-weight raw funds':true,'Equal-weight residual funds':true,'Residual alpha trend follower':true},'strategyLegend')",
-        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Executable raw-return factor residual':DATA.executable_residual_equity,'Model residual signal (not tradeable)':DATA.model_residual_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Executable raw-return factor residual':true,'Model residual signal (not tradeable)':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
+        "draw('strategyChart',{'Trend-following raw funds':DATA.trend_equity.raw,'Trend-following factor-neutral funds':DATA.trend_equity.neutral,'Replicable residual fund + benchmark hedge':DATA.alpha_equity,'Tradeable signed residual momentum':DATA.signed_equity,'Executable raw-return factor residual':DATA.executable_residual_equity,'Model residual signal (not tradeable)':DATA.model_residual_equity,'Naive equal-weight residual diagnostic':cum(res)},{'Trend-following raw funds':true,'Trend-following factor-neutral funds':true,'Replicable residual fund + benchmark hedge':true,'Tradeable signed residual momentum':true,'Executable raw-return factor residual':true,'Model residual signal (not tradeable)':true,'Naive equal-weight residual diagnostic':true},'strategyLegend')",
     )
     html = html.replace(
         "Equal-weight raw funds",
@@ -162,7 +174,7 @@ function init(){{DATA.funds.names.forEach(n=>$('fundSelect').add(new Option(n,n)
     )
     html = html.replace(
         '<a href="alpha_backtest_stats.csv">Alpha statistics CSV</a>',
-        '<a href="alpha_backtest_stats.csv">Tradeable strategy statistics</a><a href="strategy_executable_residuals.csv">Executable residual CSV</a><a href="trend_residual_fund_weights.csv">Fund holdings CSV</a><a href="trend_residual_benchmark_hedge_exposures.csv">Benchmark hedge CSV</a>',
+        '<a href="alpha_backtest_stats.csv">Tradeable strategy statistics</a><a href="signed_residual_momentum_stats.csv">Signed momentum statistics</a><a href="signed_residual_fund_weights.csv">Signed fund weights</a><a href="signed_residual_benchmark_hedge.csv">Signed benchmark hedge</a><a href="strategy_executable_residuals.csv">Executable residual CSV</a><a href="trend_residual_fund_weights.csv">Fund holdings CSV</a><a href="trend_residual_benchmark_hedge_exposures.csv">Benchmark hedge CSV</a>',
     )
     return html
 

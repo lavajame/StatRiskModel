@@ -38,7 +38,14 @@ from riskmodel.visuals import (
     plot_factor_moves,
     plot_fund_factor_attribution,
 )
-from backtest import BacktestResult, factor_attribution, run_trend_following, run_neutral_following, weekly_rebalanced_weights
+from backtest import (
+    BacktestResult,
+    factor_attribution,
+    run_signed_residual_momentum,
+    run_trend_following,
+    run_neutral_following,
+    weekly_rebalanced_weights,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -358,6 +365,30 @@ def main() -> None:
     )
     executable_residuals = strategy_returns.loc[test_returns.index] - executable_fitted
     executable_residuals.to_csv(args.output / "strategy_executable_residuals.csv")
+    signed_residual = run_signed_residual_momentum(executable_residuals)
+    pd.DataFrame([{
+        "strategy": signed_residual.strategy,
+        "target_vol": signed_residual.target_vol,
+        "max_leverage": signed_residual.max_leverage,
+        "annual_vol": signed_residual.annual_vol,
+        "cagr": signed_residual.cagr,
+        "max_drawdown": signed_residual.max_drawdown,
+        "sharpe": signed_residual.sharpe,
+        "final_return": signed_residual.final_return,
+        "annual_turnover": signed_residual.annual_turnover,
+        "portfolio_age": signed_residual.portfolio_age,
+    }]).set_index("strategy").to_csv(args.output / "signed_residual_momentum_stats.csv")
+    signed_residual.equity_curve.to_csv(
+        args.output / "signed_residual_momentum_equity.csv", header=["signed_residual_momentum"]
+    )
+    signed_fund_weights = signed_residual.weights.fillna(0.0)
+    signed_hedge_weights = pd.DataFrame(
+        -(signed_fund_weights.to_numpy() @ executable_betas) @ executable_factor_map.T,
+        index=signed_fund_weights.index,
+        columns=model_returns.columns,
+    )
+    signed_fund_weights.to_csv(args.output / "signed_residual_fund_weights.csv")
+    signed_hedge_weights.to_csv(args.output / "signed_residual_benchmark_hedge.csv")
     strategy_factor_decomposition.to_csv(
         args.output / "strategy_factor_variance_decomposition.csv"
     )
