@@ -12,11 +12,14 @@ from riskmodel.data_loader import fetch_asset_data
 from riskmodel.visuals import plot_cumulative_returns
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start", default="1996-01-01")
     parser.add_argument("--end", default="2026-08-27")
-    parser.add_argument("--output", type=Path, default=Path("data/raw"))
+    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "data" / "raw")
     return parser.parse_args()
 
 

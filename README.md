@@ -15,6 +15,10 @@ This project implements the first executable slice of the specification in `stat
 python -m pip install -e ".[test]"
 ```
 
+That installation is sufficient to rebuild the reports from the committed data;
+the production build uses only the project dependencies and does not contact the
+network.
+
 Install data retrieval and visualization dependencies only when downloading fresh data or building figures:
 
 ```powershell
@@ -69,6 +73,21 @@ The benchmark panel should be downloaded with a long common history before repor
 ```powershell
 python scripts/regenerate_reports.py
 ```
+
+For a fresh GitHub checkout, the complete restart is:
+
+```powershell
+git clone <repository-url>
+cd RiskModel
+python -m pip install -e ".[test]"
+python scripts/regenerate_reports.py
+python -m pytest -q
+```
+
+The committed source inputs are under `data/raw/`. The model CSVs, figures, and
+HTML reports are build products: the first command above recreates them under
+`reports/` from those inputs. The rebuild script resolves paths from the checkout,
+so it can also be invoked with an absolute script path from another directory.
 
 This reads the committed offline CSV, writes intermediate model CSVs under
 `reports/`, and regenerates both HTML reports. Use

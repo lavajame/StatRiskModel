@@ -20,6 +20,7 @@ from riskmodel.regime import compute_regime_scores, construct_tilted_loadings
 from riskmodel.universes import BENCHMARK_UNIVERSE, EXPLANATORY_UNIVERSE, display_labels
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_ANCHOR = "ACWI"
 N_FACTORS = 8
 BLOCK_SIZE = 252
@@ -47,7 +48,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         type=Path,
-        default=Path("data/raw/daily_returns.csv"),
+        default=PROJECT_ROOT / "data" / "raw" / "daily_returns.csv",
         help="Offline daily-returns CSV; download from yfinance only when absent",
     )
     parser.add_argument(
@@ -55,7 +56,7 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Ignore --input and download fresh market data with yfinance",
     )
-    parser.add_argument("--output", type=Path, default=Path("reports"))
+    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "reports")
     return parser.parse_args()
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path("reports")
+ROOT = Path(__file__).resolve().parents[1] / "reports"
 OUT = ROOT / "research_viewer.html"
 
 def make_payload() -> dict:

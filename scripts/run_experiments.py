@@ -20,7 +20,8 @@ BLOCK_SIZE = 252
 HOLDOUT_FRACTION = 0.30
 
 
-OUTPUT = Path("reports/experiments")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+OUTPUT = PROJECT_ROOT / "reports" / "experiments"
 
 
 def fit_factor_split(
@@ -183,7 +184,7 @@ def economic_factor_experiment(
 
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    raw = pd.read_csv("data/raw/daily_returns.csv", index_col=0, parse_dates=True)
+    raw = pd.read_csv(PROJECT_ROOT / "data" / "raw" / "daily_returns.csv", index_col=0, parse_dates=True)
     tickers = [ticker for ticker in BENCHMARK_UNIVERSE if ticker in raw]
     returns = raw[tickers].dropna()
     benchmark_volatility = returns[BENCHMARK_ANCHOR].ewm(alpha=0.01, adjust=False).std().fillna(0.0)

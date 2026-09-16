@@ -21,7 +21,7 @@ research = ["yfinance>=0.2", "plotly>=5.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "scripts"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

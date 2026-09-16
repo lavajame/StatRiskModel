@@ -12,7 +12,7 @@ import pandas as pd
 from riskmodel.universes import ALL_UNIVERSES
 
 
-REPORTS = Path("reports")
+REPORTS = Path(__file__).resolve().parents[1] / "reports"
 OUTPUT = REPORTS / "factor_model_explorer.html"
 TEMPLATE = Path(__file__).with_name("templates") / "factor_explorer.html"
 
